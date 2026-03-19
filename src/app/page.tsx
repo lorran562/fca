@@ -64,6 +64,7 @@ const SPRITE_DEAD = [
 
 // Mapeia símbolo → cor relativa ao player
 function getColor(sym: string, playerColor: string): string | null {
+  if (!playerColor) return null;
   switch(sym) {
     case 'X': return playerColor;       // cabelo
     case 'H': return '#FFCC88';          // pele
@@ -91,6 +92,7 @@ function drawSprite(
   scale: number,
   color: string
 ) {
+  if (!grid || !grid.length) return;
   grid.forEach((row, ry) => {
     [...row].forEach((sym, rx) => {
       const c = getColor(sym, color);
@@ -200,64 +202,72 @@ interface RankRow { display_name: string; wins: number; losses: number; coins: n
 
 // ─── RACE CANVAS ───────────────────────────────────────────────
 function RaceCanvas({ players, myId, phase }: { players: PState[]; myId: string; phase: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scrollRef = useRef(0);
-  const frameRef  = useRef(0);
-  const tickRef   = useRef(0);
-  const rafRef    = useRef(0);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const scrollRef  = useRef(0);
+  const frameRef   = useRef(0);
+  const tickRef    = useRef(0);
+  const rafRef     = useRef(0);
+  const playersRef = useRef<PState[]>(players);
+  const phaseRef   = useRef(phase);
+  const myIdRef    = useRef(myId);
 
+  // Atualiza refs sem reiniciar o loop de animação
+  useEffect(() => { playersRef.current = players; }, [players]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { myIdRef.current = myId; }, [myId]);
+
+  // Loop de animação — só inicia UMA vez
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
-
     const W = canvas.width;
     const H = canvas.height;
     const SCALE = 4;
     const TRACK_Y = H * 0.42;
-    const LANE_H  = (H * 0.52) / Math.max(players.length, 1);
 
     const animate = () => {
+      const ps    = playersRef.current;
+      const ph    = phaseRef.current;
+      const me    = myIdRef.current;
+      const LANE_H = (H * 0.52) / Math.max(ps.length, 1);
+
       tickRef.current++;
       if (tickRef.current % 8 === 0) frameRef.current ^= 1;
 
-      // Scroll speed = média do progresso dos jogadores
-      const avgProg = players.reduce((s, p) => s + p.progress, 0) / Math.max(players.length, 1);
-      if (phase === 'racing') scrollRef.current += 2 + avgProg * 0.04;
+      const avgProg = ps.reduce((s, p) => s + p.progress, 0) / Math.max(ps.length, 1);
+      if (ph === 'racing') scrollRef.current += 2 + avgProg * 0.04;
 
       ctx.clearRect(0, 0, W, H);
       drawTrack(ctx, W, H, scrollRef.current);
 
-      // Desenha cada corredor em sua lane
-      players.forEach((p, i) => {
+      const winnerId = ph === 'finished'
+        ? [...ps].sort((a,b) => b.progress - a.progress)[0]?.id
+        : null;
+
+      ps.forEach((p, i) => {
         const laneY = TRACK_Y + i * LANE_H + LANE_H * 0.1;
-        const isMe  = p.id === myId;
+        const isMe  = p.id === me;
         const color = COLORS[p.colorIdx % COLORS.length];
+        const minX  = W * 0.05;
+        const maxX  = W * 0.82;
+        const sprX  = minX + (p.progress / 100) * (maxX - minX);
 
-        // Posição X baseada no progresso (de 5% a 85% da tela)
-        const minX = W * 0.05;
-        const maxX = W * 0.82;
-        const sprX = minX + (p.progress / 100) * (maxX - minX);
-
-        // Sombra
         ctx.fillStyle = `${color}33`;
         ctx.fillRect(sprX + SCALE, laneY + SCALE * 10, SCALE * 6, SCALE);
 
-        // Sprite
-        const grid = phase === 'finished'
-          ? (p.id === players.sort((a,b)=>b.progress-a.progress)[0].id ? SPRITE_WIN : SPRITE_DEAD)
+        const grid = ph === 'finished'
+          ? (p.id === winnerId ? SPRITE_WIN : SPRITE_DEAD)
           : (frameRef.current === 0 ? SPRITE_F1 : SPRITE_F2);
 
         drawSprite(ctx, grid, sprX, laneY, SCALE, color);
 
-        // Nome acima do personagem
         ctx.font = `bold ${isMe ? 11 : 9}px monospace`;
         ctx.fillStyle = isMe ? color : '#FFFFFF88';
         ctx.textAlign = 'center';
         ctx.fillText(p.name.slice(0, 8), sprX + SCALE * 4, laneY - 4);
 
-        // Barra de progresso mini
         const barW = 60, barH = 4;
         const barX = sprX - 22, barY = laneY + SCALE * 11 + 4;
         ctx.fillStyle = '#FFFFFF22';
@@ -265,7 +275,6 @@ function RaceCanvas({ players, myId, phase }: { players: PState[]; myId: string;
         ctx.fillStyle = color;
         ctx.fillRect(barX, barY, barW * (p.progress / 100), barH);
 
-        // Linha de chegada (só aparecer quando alguém está perto)
         if (p.progress > 70) {
           ctx.fillStyle = '#FFFFFF44';
           ctx.fillRect(W * 0.88, TRACK_Y, 3, H * 0.52);
@@ -281,7 +290,7 @@ function RaceCanvas({ players, myId, phase }: { players: PState[]; myId: string;
 
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [players, myId, phase]);
+  }, []); // <-- array vazio: loop inicia só UMA vez
 
   return (
     <canvas
@@ -585,7 +594,8 @@ export default function Home() {
 
   // ── RESULT ───────────────────────────────────────────────────
   if (phase === 'finished' && result) {
-    const winner = players.find(p => p.id === (players.sort((a,b) => b.progress-a.progress)[0]?.id));
+    const sortedByProgress = [...players].sort((a,b) => b.progress - a.progress);
+    const winner = sortedByProgress[0];
     return (
       <div style={{ ...P, padding:'24px 16px', gap:16 }}>
         {/* Canvas de resultado */}
@@ -608,7 +618,7 @@ export default function Home() {
         </div>
 
         <div style={{ width:'100%', maxWidth:360 }}>
-          {result.players.sort((a,b)=>b.progress-a.progress).map((p, i) => (
+          {[...result.players].sort((a,b)=>b.progress-a.progress).map((p, i) => (
             <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:'1px solid #111' }}>
               <span style={{ fontSize:16, width:24 }}>{'🥇🥈🥉4️⃣'[i]}</span>
               <MiniSprite color={COLORS[p.colorIdx%4]} frame={0} />
