@@ -1,0 +1,130 @@
+/* src/app/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Bebas Neue', monospace;
+  --font-body: 'DM Sans', sans-serif;
+
+  --neon-yellow: #FFE600;
+  --neon-green: #00FF94;
+  --neon-red: #FF2D55;
+  --neon-blue: #00C2FF;
+
+  --dark-900: #080808;
+  --dark-800: #111111;
+  --dark-700: #1A1A1A;
+  --dark-600: #252525;
+  --dark-500: #333333;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* previne zoom duplo-toque no mobile */
+}
+
+html, body {
+  padding: 0;
+  margin: 0;
+  background: var(--dark-900);
+  color: #fff;
+  font-family: var(--font-body);
+  overscroll-behavior: none;
+  min-height: 100dvh;
+}
+
+/* Scrollbar escura */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--dark-800); }
+::-webkit-scrollbar-thumb { background: var(--dark-500); border-radius: 2px; }
+
+/* Previne seleção de texto durante cliques rápidos */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Scanlines effect overlay */
+.scanlines::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Glow utilities */
+.glow-yellow { text-shadow: 0 0 20px var(--neon-yellow), 0 0 40px var(--neon-yellow); }
+.glow-green  { text-shadow: 0 0 20px var(--neon-green),  0 0 40px var(--neon-green);  }
+.glow-red    { text-shadow: 0 0 20px var(--neon-red),    0 0 40px var(--neon-red);    }
+.glow-blue   { text-shadow: 0 0 20px var(--neon-blue),   0 0 40px var(--neon-blue);   }
+
+.box-glow-yellow { box-shadow: 0 0 15px var(--neon-yellow), 0 0 30px rgba(255,230,0,0.3); }
+.box-glow-green  { box-shadow: 0 0 15px var(--neon-green),  0 0 30px rgba(0,255,148,0.3); }
+.box-glow-red    { box-shadow: 0 0 15px var(--neon-red),    0 0 30px rgba(255,45,85,0.3); }
+
+/* Click button pulse */
+@keyframes clickPulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255,230,0,0.7); }
+  50%  { transform: scale(0.94); box-shadow: 0 0 0 10px rgba(255,230,0,0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255,230,0,0); }
+}
+
+.click-btn:active {
+  animation: clickPulse 0.15s ease-out;
+}
+
+/* Progress bar shine */
+@keyframes shine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.progress-bar-shine {
+  background: linear-gradient(
+    90deg,
+    var(--bar-color) 0%,
+    rgba(255,255,255,0.4) 50%,
+    var(--bar-color) 100%
+  );
+  background-size: 200% auto;
+  animation: shine 1.5s linear infinite;
+}
+
+/* Número do countdown */
+@keyframes popIn {
+  0%   { transform: scale(2); opacity: 0; }
+  30%  { transform: scale(1); opacity: 1; }
+  80%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.6); opacity: 0; }
+}
+
+.countdown-number {
+  animation: popIn 1s ease-in-out forwards;
+}
+
+/* Fade in slide up */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-slide-up {
+  animation: fadeSlideUp 0.4s ease-out both;
+}
+
+/* Particles */
+@keyframes particle-float {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-80px) scale(0); opacity: 0; }
+}
